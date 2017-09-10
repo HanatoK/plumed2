@@ -179,10 +179,17 @@ void drrtool::mergewindows(const std::vector<std::string> &filename) {
     amerged = ABF::mergewindow(amerged, abfs[i]);
   }
   // Generate new file name for merged grad and count
-  std::vector<std::string> tmp_name = filename;
-  std::transform(std::begin(tmp_name), std::end(tmp_name), std::begin(tmp_name), [&](std::string s) {return s.substr(0, s.find(suffix));});
-  std::string mergename = std::accumulate(std::begin(tmp_name), std::end(tmp_name), std::string(""), [](std::string a, std::string b) {return a + b + "+";});
-  mergename = mergename.substr(0, mergename.size() - 1);
+//   std::vector<std::string> tmp_name = filename;
+//   std::transform(std::begin(tmp_name), std::end(tmp_name), std::begin(tmp_name), [&](std::string s) {return s.substr(0, s.find(suffix));});
+//   std::string mergename = std::accumulate(std::begin(tmp_name), std::end(tmp_name), std::string(""), [](std::string a, std::string b) {return a + b + "+";});
+  std::string mergename;
+  for(size_t j = 0; j < filename.size(); ++j) {
+    mergename += filename[j].substr(0, filename[j].find(suffix));
+    if(j != filename.size() - 1) {
+      mergename += "+";
+    }
+  }
+//   mergename = mergename.substr(0, mergename.size() - 1);
   cmerged.writeAll(mergename);
   amerged.writeAll(mergename);
 }
