@@ -167,12 +167,12 @@ public:
   /// Store instantaneous forces of a point
   /// nsamples > 1 is useful for merging windows
   bool store(const vector<double> &pos, const vector<double> &f,
-             unsigned long int nsamples = 1);
+             double nsamples = 1);
   /// Get accumulated forces of a point
   vector<double>
   getAccumulatedForces(const vector<double> &pos) const;
   /// Get counts of a point
-  unsigned long int getCount(const vector<double> &pos,
+  double getCount(const vector<double> &pos,
                              bool SkipCheck = false) const;
   /// Virtual function! get gradients of a point
   /// CZAR and naive(ABF) have different gradient formulae
@@ -222,7 +222,7 @@ protected:
   /// Store the average force of each bins
   vector<double> forces;
   /// Store counts of each bins
-  vector<unsigned long int> samples;
+  vector<double> samples;
   /// Only for 1D pmf output
   vector<double> endpoints;
   /// For faster indexing

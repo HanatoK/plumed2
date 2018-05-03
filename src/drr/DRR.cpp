@@ -156,7 +156,7 @@ size_t DRRForceGrid::sampleAddress(const vector<double> &pos) const {
 }
 
 bool DRRForceGrid::store(const vector<double> &pos, const vector<double> &f,
-                         unsigned long int nsamples) {
+                         double nsamples) {
   if (isInBoundary(pos)) {
     if (nsamples == 0)
       return true;
@@ -188,7 +188,7 @@ DRRForceGrid::getAccumulatedForces(const vector<double> &pos) const {
   return result;
 }
 
-unsigned long int DRRForceGrid::getCount(const vector<double> &pos,
+double DRRForceGrid::getCount(const vector<double> &pos,
     bool SkipCheck) const {
   if (!SkipCheck) {
     if (!isInBoundary(pos)) {
@@ -207,7 +207,7 @@ vector<double> DRRForceGrid::getGradient(const vector<double> &pos,
     }
   }
   const size_t baseaddr = sampleAddress(pos);
-  const unsigned long int &count = samples[baseaddr];
+  const double &count = samples[baseaddr];
   if (count == 0)
     return result;
   auto it_fa = begin(forces) + baseaddr * ndims;
@@ -285,7 +285,7 @@ double DRRForceGrid::getDivergence(const vector<double> &pos) const {
 vector<double>
 DRRForceGrid::getCountsLogDerivative(const vector<double> &pos) const {
   const size_t addr = sampleAddress(pos);
-  const unsigned long int count_this = samples[addr];
+  const double count_this = samples[addr];
   vector<double> result(ndims, 0);
   for (size_t i = 0; i < ndims; ++i) {
     const double binWidth = dimensions[i].binWidth;
@@ -294,14 +294,14 @@ DRRForceGrid::getCountsLogDerivative(const vector<double> &pos) const {
     const size_t addr_last = addr_first + shifts[i] * (dimensions[i].nbins - 1);
     if (addr == addr_first) {
       if (dimensions[i].isRealPeriodic() == true) {
-        const unsigned long int &count_next = samples[addr + shifts[i]];
-        const unsigned long int &count_prev = samples[addr_last];
+        const double &count_next = samples[addr + shifts[i]];
+        const double &count_prev = samples[addr_last];
         if (count_next != 0 && count_prev != 0)
           result[i] =
             (std::log(count_next) - std::log(count_prev)) / (2 * binWidth);
       } else {
-        const unsigned long int &count_next = samples[addr + shifts[i]];
-        const unsigned long int &count_next2 = samples[addr + shifts[i] * 2];
+        const double &count_next = samples[addr + shifts[i]];
+        const double &count_next2 = samples[addr + shifts[i] * 2];
         if (count_next != 0 && count_this != 0 && count_next2 != 0)
           result[i] =
             (std::log(count_next2) * (-1.0) + std::log(count_next) * 4.0 -
@@ -310,22 +310,22 @@ DRRForceGrid::getCountsLogDerivative(const vector<double> &pos) const {
       }
     } else if (addr == addr_last) {
       if (dimensions[i].isRealPeriodic() == true) {
-        const unsigned long int &count_prev = samples[addr - shifts[i]];
-        const unsigned long int &count_next = samples[addr_first];
+        const double &count_prev = samples[addr - shifts[i]];
+        const double &count_next = samples[addr_first];
         if (count_next != 0 && count_prev != 0)
           result[i] =
             (std::log(count_next) - std::log(count_prev)) / (2 * binWidth);
       } else {
-        const unsigned long int &count_prev = samples[addr - shifts[i]];
-        const unsigned long int &count_prev2 = samples[addr - shifts[i] * 2];
+        const double &count_prev = samples[addr - shifts[i]];
+        const double &count_prev2 = samples[addr - shifts[i] * 2];
         if (count_prev != 0 && count_this != 0 && count_prev2 != 0)
           result[i] = (std::log(count_this) * 3.0 - std::log(count_prev) * 4.0 +
                        std::log(count_prev2)) /
                       (2.0 * binWidth);
       }
     } else {
-      const unsigned long int &count_prev = samples[addr - shifts[i]];
-      const unsigned long int &count_next = samples[addr + shifts[i]];
+      const double &count_prev = samples[addr - shifts[i]];
+      const double &count_next = samples[addr + shifts[i]];
       if (count_next != 0 && count_prev != 0)
         result[i] =
           (std::log(count_next) - std::log(count_prev)) / (2 * binWidth);
@@ -368,13 +368,13 @@ void DRRForceGrid::writeAll(const string &filename) const {
   for (size_t i = 0; i < sampleSize; ++i) {
     for (size_t j = 0; j < ndims; ++j) {
       pos[j] = table[j][i];
-      fprintf(pGrad, " %.9f", table[j][i]);
-      fprintf(pCount, " %.9f", table[j][i]);
+      fprintf(pGrad, " %.9lf", table[j][i]);
+      fprintf(pCount, " %.9lf", table[j][i]);
     }
-    fprintf(pCount, " %lu\n", getCount(pos, true));
+    fprintf(pCount, " %.0lf\n", getCount(pos, true));
     vector<double> f = getGradient(pos, true);
     for (size_t j = 0; j < ndims; ++j) {
-      fprintf(pGrad, " %.9f", (f[j] / outputunit));
+      fprintf(pGrad, " %.9lf", (f[j] / outputunit));
     }
     fprintf(pGrad, "\n");
   }
@@ -412,7 +412,7 @@ bool ABF::store_getbias(const vector<double> &pos, const vector<double> &f,
     return false;
   }
   const size_t baseaddr = sampleAddress(pos);
-  unsigned long int &count = samples[baseaddr];
+  double &count = samples[baseaddr];
   ++count;
   double factor = 2 * (static_cast<double>(count)) / mFullSamples - 1;
   // Clamp to [0,maxFactor]
@@ -443,10 +443,14 @@ ABF ABF::mergewindow(const ABF &aWA, const ABF &aWB) {
     for (size_t j = 0; j < ncols; ++j) {
       pos[j] = result.table[j][i];
     }
-    const unsigned long int countA = aWA.getCount(pos);
-    const unsigned long int countB = aWB.getCount(pos);
+    double countA = aWA.getCount(pos);
+    double countB = aWB.getCount(pos);
     const vector<double> aForceA = aWA.getAccumulatedForces(pos);
     const vector<double> aForceB = aWB.getAccumulatedForces(pos);
+    if (aWA.isInBoundary(pos) && aWB.isInBoundary(pos)) {
+        countA = 0.5 * countA;
+        countB = 0.5 * countB;
+    }
     result.store(pos, aForceA, countA);
     result.store(pos, aForceB, countB);
   }
@@ -468,7 +472,7 @@ vector<double> CZAR::getGradient(const vector<double> &pos,
   }
   const size_t baseaddr = sampleAddress(pos);
   const vector<double> log_deriv(getCountsLogDerivative(pos));
-  const unsigned long int &count = samples[baseaddr];
+  const double &count = samples[baseaddr];
   if (count == 0)
     return result;
   auto it_fa = begin(forces) + baseaddr * ndims;
@@ -491,10 +495,14 @@ CZAR CZAR::mergewindow(const CZAR &cWA, const CZAR &cWB) {
     for (size_t j = 0; j < ncols; ++j) {
       pos[j] = result.table[j][i];
     }
-    const unsigned long int countA = cWA.getCount(pos);
-    const unsigned long int countB = cWB.getCount(pos);
+    double countA = cWA.getCount(pos);
+    double countB = cWB.getCount(pos);
     const vector<double> aForceA = cWA.getAccumulatedForces(pos);
     const vector<double> aForceB = cWB.getAccumulatedForces(pos);
+    if (cWA.isInBoundary(pos) && cWB.isInBoundary(pos)) {
+        countA = 0.5 * countA;
+        countB = 0.5 * countB;
+    }
     result.store(pos, aForceA, countA);
     result.store(pos, aForceB, countB);
   }
