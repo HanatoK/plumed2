@@ -48,19 +48,7 @@
 
 using namespace std;
 
-#include "PlumedMainEnum.inc"
-
 namespace PLMD {
-
-const std::unordered_map<std::string, int> & plumedMainWordMap() {
-  static std::unordered_map<std::string, int> word_map;
-  static bool init=false;
-  if(!init) {
-#include "PlumedMainMap.inc"
-  }
-  init=true;
-  return word_map;
-}
 
 PlumedMain::PlumedMain():
   initialized(false),
@@ -100,6 +88,16 @@ PlumedMain::~PlumedMain() {
 
 void PlumedMain::cmd(const std::string & word,void*val) {
 
+// Enumerate all possible commands:
+  enum {
+#include "PlumedMainEnum.inc"
+  };
+
+// Static object (initialized once) containing the map of commands:
+  const static std::unordered_map<std::string, int> word_map = {
+#include "PlumedMainMap.inc"
+  };
+
   try {
 
     auto ss=stopwatch.startPause();
@@ -111,8 +109,8 @@ void PlumedMain::cmd(const std::string & word,void*val) {
     } else {
       int iword=-1;
       double d;
-      const auto it=plumedMainWordMap().find(words[0]);
-      if(it!=plumedMainWordMap().end()) iword=it->second;
+      const auto it=word_map.find(words[0]);
+      if(it!=word_map.end()) iword=it->second;
       switch(iword) {
       case cmd_setBox:
         CHECK_INIT(initialized,word);
@@ -260,6 +258,13 @@ void PlumedMain::cmd(const std::string & word,void*val) {
         if( nw==2 ) mydatafetcher->setData( words[1], "", val );
         else mydatafetcher->setData( words[1], words[2], val );
         break;
+      /* ADDED WITH API==6 */
+      case cmd_setErrorHandler:
+      {
+        if(val) error_handler=*static_cast<plumed_error_handler*>(val);
+        else error_handler.handler=NULL;
+      }
+      break;
       case cmd_read:
         CHECK_INIT(initialized,word);
         if(val)readInputFile(static_cast<char*>(val));
@@ -439,6 +444,16 @@ void PlumedMain::cmd(const std::string & word,void*val) {
         plumed_assert(nw==2);
         *(static_cast<int*>(val))=(actionRegister().check(words[1]) ? 1:0);
         break;
+      case cmd_setExtraCV:
+        CHECK_NOTNULL(val,word);
+        plumed_assert(nw==2);
+        atoms.setExtraCV(words[1],val);
+        break;
+      case cmd_setExtraCVForce:
+        CHECK_NOTNULL(val,word);
+        plumed_assert(nw==2);
+        atoms.setExtraCVForce(words[1],val);
+        break;
       case cmd_GREX:
         if(!grex) grex.reset(new GREX(*this));
         plumed_massert(grex,"error allocating grex");
@@ -463,7 +478,7 @@ void PlumedMain::cmd(const std::string & word,void*val) {
       }
     }
 
-  } catch (Exception &e) {
+  } catch (std::exception &e) {
     if(log.isOpen()) {
       log<<"\n\n################################################################################\n\n";
       log<<e.what();
@@ -554,7 +569,7 @@ void PlumedMain::readInputWords(const std::vector<std::string> & words) {
   } else {
     std::vector<std::string> interpreted(words);
     Tools::interpretLabel(interpreted);
-    std::unique_ptr<Action> action(actionRegister().create(ActionOptions(*this,interpreted)));
+    auto action=actionRegister().create(ActionOptions(*this,interpreted));
     if(!action) {
       std::string msg;
       msg ="ERROR\nI cannot understand line:";

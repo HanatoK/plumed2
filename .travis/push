@@ -15,6 +15,11 @@ set -x
 GIT_OWNER=$(  echo $TRAVIS_REPO_SLUG | sed "s/\/.*$//" )
 GIT_REPO=$(   echo $TRAVIS_REPO_SLUG | sed "s/^.*\///" )
 
+if [ "$TRAVIS_PULL_REQUEST" != false ] ; then
+  echo "Building from a pull request, nothing to push"
+  exit 0
+fi
+
 if [ "$GIT_OWNER" = plumed ] ; then
   if [[ "$TRAVIS_BRANCH" =~ ^v2\.[0-9]+$ ]] ; then
     if test -f CHANGES/"$TRAVIS_BRANCH".md && grep -q plumednotmaintained CHANGES/"$TRAVIS_BRANCH".md ; then
@@ -121,12 +126,12 @@ Precompiled manual for PLUMED ${TRAVIS_BRANCH}
 This repository hosts a precompiled manual for [PLUMED](http://www.plumed.org) ${TRAVIS_BRANCH},
 git revision [$hash](https://github.com/${GIT_OWNER}/${GIT_REPO}/commit/$hash).
 
-This manual has been compiled on [travis](http://travis-ci.org/${GIT_OWNER}/${GIT_REPO}) on $(date).
-
 To browse the manual you should go [here](http://${GIT_OWNER}.github.io/${WHAT}-${TRAVIS_BRANCH}).
 
 You can also download a full copy of the manual for offline access
 at [this link](http://github.com/${GIT_OWNER}/${WHAT}-${TRAVIS_BRANCH}/archive/gh-pages.zip).
+
+This manual has been compiled on [travis](http://travis-ci.org/${GIT_OWNER}/${GIT_REPO}) on $(date).
 
 EOF
 
