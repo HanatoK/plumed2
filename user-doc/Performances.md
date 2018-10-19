@@ -54,15 +54,23 @@ i.e. if you have 4 cores and 2 GPU you can:
 
 - use 2 MPI/2GPU/2OPENMP:
 
+\verbatim
 export PLUMED_NUM_THREADS=2
-
 mpiexec -np 2 gmx_mpi mdrun -nb gpu -ntomp 2 -pin on -gpu_id 01
+\endverbatim
 
 - use 4 MPI/2GPU:
 
+\verbatim
 export PLUMED_NUM_THREADS=1
-
 mpiexec -np 4 gmx_mpi mdrun -nb gpu -ntomp 1 -pin on -gpu_id 0011
+\endverbatim
+
+Of notice that since plumed 2.5 and gromacs 2018.3 the number of openMP threads can automatically set by gromacs (so PLUMED_NUM_THREADS is not needed, and the number of OpenMP threads used by plumed is set by -ntomp)
+
+\verbatim
+mpiexec -np 2 gmx_mpi mdrun -nb gpu -ntomp 2 -pin on -gpu_id 01
+\endverbatim
 
 
 \page Metadyn Metadynamics
@@ -72,9 +80,9 @@ which are activated setting the GRID_MIN and GRID_MAX keywords of \ref METAD.
 This makes addition of a hill to the list a bit slower (since
 the Gaussian has to be evaluated for many grid points)
 but the evaluation of the potential very fast. Since
-the latter is usually done every few hundred steps, whereas the former
-typically ad every step, using grids will make the simulation
-much faster.
+the former is usually done every few hundred steps, whereas the latter 
+typically at every step, using grids will make the simulation
+ faster in particular for long runs.
 
 Notice that when restarting a simulation the history is read  by default
 from a file and hills are added again to the grid.
@@ -82,8 +90,7 @@ This allows one to change the grid boundaries upon restart. However,
 the first step after restart is usually very slow.
 Since PLUMED 2.3 you can also store the grid on a file
 and read it upon restart. This can be particularly
-useful if you perform many restarts and if your hills file has
-become very large.
+useful if you perform many restarts and if your hills are large.
 
 For the precise syntax, see \ref METAD
 
@@ -170,12 +177,23 @@ This should be enabled by default if your compiler supports it,
 and can be disabled with `--disable-openmp`..
 At runtime, you should set the environment variable
 PLUMED_NUM_THREADS to the number of threads you wish to use with PLUMED.
-By default (if PLUMED_NUM_THREADS is unset) openmp will be disabled at
-runtime. E.g., to run with gromacs you should do:
+The number of OpenMP threads can be set either by the MD code, if implemented in the patch, or generally by setting PLUMED_NUM_THREADS.
+If they are not set openmp will be disabled at runtime. 
+
+E.g., to run with gromacs you can do:
 \verbatim
 export PLUMED_NUM_THREADS=8
 mdrun -plumed
 \endverbatim
+
+or as well
+
+\verbatim
+mdrun -plumed -ntomp 8
+\endverbatim
+
+In the first case the number of OpenMP threads used by plumed is 8 while the one used by gromacs can be 1 or something else, this is usually suboptimal.
+In the second case GROMACS and plumed will use the same number of OpenMP threads.
 
 Notice that:
 - This option is likely to improve the performance, but could also slow down
