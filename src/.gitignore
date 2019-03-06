@@ -5,6 +5,7 @@
 !/README
 !/adjmat
 !/analysis
+!/asmjit
 !/bias
 !/blas
 !/cltools
@@ -22,6 +23,7 @@
 !/isdb
 !/lapack
 !/lepton
+!/logmfd
 !/lib
 !/main
 !/maketools
