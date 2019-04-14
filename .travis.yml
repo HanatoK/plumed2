@@ -137,7 +137,7 @@ install:
 # install aspell
   - if test "$MAKEDOC" == yes ; then sudo apt-get install -y aspell aspell-en  ; fi
 # install lcov
-  - if test "$MAKECOVERAGE" == yes ; then ./.travis/install.lcov v1.13 ; fi
+  - if test "$MAKECOVERAGE" == yes ; then ./.travis/install.lcov v1.14 ; fi
 # install numpy and cython for python interface
 # only for linux and homebrew (no macports)
   - if test "$PLUMED_CXX" ; then
@@ -197,11 +197,11 @@ script:
 
 # build using macports
   - if test -n "$PLUMED_MACPORTS" ; then
-      sudo port -N -k install $PLUMED_MACPORTS ;
+      travis_wait sudo port -N -k install $PLUMED_MACPORTS ;
       plumed config show ;
       ./macports-ci ccache --save ;
       for p in $PLUMED_PYTHON ; do
-        sudo port -N install py${p//./}-plumed ;
+        travis_wait sudo port -N install py${p//./}-plumed ;
       done
     fi
 
@@ -221,10 +221,12 @@ script:
   - if test "$MAKECOVERAGE" == yes ; then make -C developer-doc coverage ; fi
   - if test "$MAKEDOC" == yes ; then make doc >/dev/null ; fi
   - if test "$PLUMED_CXX" ; then make -C regtest checkfail ; fi
+# OpenBLAS is needed for numpy, I install it separately since it takes a long time
   - if test -n "$PLUMED_MACPORTS" ; then
-      sudo port -N -d test $PLUMED_MACPORTS ;
+      travis_wait sudo port -N -d test $PLUMED_MACPORTS ;
+      travis_wait sudo port -N install OpenBLAS ;
       for p in $PLUMED_PYTHON ; do
-        sudo port test py${p//./}-plumed ;
+        travis_wait sudo port test py${p//./}-plumed ;
       done
     fi
   - if test "$PLUMED_CXX" ; then
