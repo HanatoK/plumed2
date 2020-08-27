@@ -121,6 +121,9 @@ class ExtendedLagrangian : public Bias {
   std::vector<double> kappa;
   std::vector<double> tau;
   std::vector<double> friction;
+  // reflecting boundary
+  std::vector<double> lowerBoundary;
+  std::vector<double> upperBoundary;
   std::vector<Value*> fictValue;
   std::vector<Value*> vfictValue;
   double kbt;
@@ -141,6 +144,8 @@ void ExtendedLagrangian::registerKeywords(Keywords& keys) {
   keys.add("compulsory","TAU","specifies that the restraint is harmonic and what the values of the force constants on each of the variables are");
   keys.add("compulsory","FRICTION","0.0","add a friction to the variable");
   keys.add("optional","TEMP","the system temperature - needed when FRICTION is present. If not provided will be taken from MD code (if available)");
+  keys.add("compulsory","UPPERBOUNDARY","99999.0","upper reflecting boundary of the extended lagrangian. Useful in importance-sampling simulations (e.g. eABF)");
+  keys.add("compulsory","LOWERBOUNDARY","-99999.0","lower reflecting boundary of the extended lagrangian");
   componentsAreNotOptional(keys);
   keys.addOutputComponent("_fict","default","one or multiple instances of this quantity can be referenced elsewhere in the input file. "
                           "These quantities will named with the arguments of the bias followed by "
@@ -160,6 +165,8 @@ ExtendedLagrangian::ExtendedLagrangian(const ActionOptions&ao):
   kappa(getNumberOfArguments(),0.0),
   tau(getNumberOfArguments(),0.0),
   friction(getNumberOfArguments(),0.0),
+  lowerBoundary(getNumberOfArguments(),-99999.0),
+  upperBoundary(getNumberOfArguments(),99999.0),
   fictValue(getNumberOfArguments(),NULL),
   vfictValue(getNumberOfArguments(),NULL),
   kbt(0.0)
@@ -167,6 +174,8 @@ ExtendedLagrangian::ExtendedLagrangian(const ActionOptions&ao):
   parseVector("TAU",tau);
   parseVector("FRICTION",friction);
   parseVector("KAPPA",kappa);
+  parseVector("LOWERBOUNDARY",lowerBoundary);
+  parseVector("UPPERBOUNDARY",upperBoundary);
   double temp=-1.0;
   parse("TEMP",temp);
   if(temp>=0.0) kbt=plumed.getAtoms().getKBoltzmann()*temp;
@@ -193,6 +202,13 @@ ExtendedLagrangian::ExtendedLagrangian(const ActionOptions&ao):
   log.printf("  and kbt");
   log.printf(" %f",kbt);
   log.printf("\n");
+  
+  // guarantee whether upperBoundary > lowerBoundary
+  for(unsigned i=0; i<getNumberOfArguments(); i++) {
+      if(upperBoundary[i]<=lowerBoundary[i]) {
+          error("Error, upper boundary smaller than lower boundary!");
+      }
+  }
 
   for(unsigned i=0; i<getNumberOfArguments(); i++) {
     std::string comp=getPntrToArgument(i)->getName()+"_fict";
@@ -223,6 +239,10 @@ void ExtendedLagrangian::calculate() {
   if(firsttime) {
     for(unsigned i=0; i<getNumberOfArguments(); ++i) {
       fict[i]=getArgument(i);
+      // guarantee fict in [lowerboundary, upperboundary]
+      if(fict[i]>=upperBoundary[i] || fict[i]<=lowerBoundary[i]) {
+          error("Error, initial position not in the range of [lowerBoundary, upperBoundary]!");
+      }
     }
     firsttime=false;
   }
@@ -265,6 +285,15 @@ void ExtendedLagrangian::update() {
     vfict[i]+=ffict[i]*0.5*dt/mass;
 // update position (full step)
     fict[i]+=vfict[i]*dt;
+// reflecting boundary
+    if (fict[i]<lowerBoundary[i]) {
+        fict[i]=lowerBoundary[i]+(lowerBoundary[i]-fict[i]);
+        vfict[i]*=-1.0;
+    }
+    if (fict[i]>upperBoundary[i]) {
+        fict[i]=upperBoundary[i]-(fict[i]-upperBoundary[i]);
+        vfict[i]*=-1.0;
+    }
   }
 }
 
